@@ -78,6 +78,10 @@ predict resid, resid;
 format total %10.0f;
 *These residuals are the points for the times series in Figure 2.;
 *The points for the Sandy Hook time period are the residuals + the coefficients on sandyhookp1-sandyhookp5.;
+
+<!-- The list command lists values of variables. Here those variables are year, month, total, resid, and clean. -->
+<!-- The clear command is called to remove data and value labels from memory and is equivalent to typing. -->
+
 list year month total resid, clean;
 clear;
 
@@ -134,14 +138,22 @@ gen trend2 = trend^2;
 <!-- Since this paper is looking at trends before and after the Sandy Hook shooting, we do not want to include the year of the Sandy Hook shooting (2013). -->
 <!-- The regress command runs a regression, here looking at the effect of trend and trend2 (the x, or independent, variables) on mortality rate (the y, or dependent, variable). -->
 <!-- The "if year ~= 2013" tells the program to not regress when the year is 2013, with the tilde being the indicator of the negation. -->
+<!-- They then predict the residuals. -->
 
 
 *We exclude the Sandy Hook window from our estimation of the trend;
 regress mortrate trend trend2 if year ~= 2013;
 predict resid, resid;
 
+<!-- Sort arranges the observations of the current data into ascending order based on the values of the variables. Here it is sorting by year. -->
+<!-- Collapse makes a dataset of summary statistics. -->
+<!-- It is taking the sum of the number of deaths, the mortality rate, and the residuals by year. -->
+
+
 sort year;
 collapse (sum) numdeaths mortrate resid, by(year);
+
+<!-- Creating a list of the variable clean. I am not sure what clean is. -->
 
 list, clean;
 clear;
@@ -150,25 +162,47 @@ clear;
 * Replicate Figure 3 *;
 **********************;
 
+<!-- Reading in new a new data file with the use command. -->
+
 use bckcheck-state-public.dta;
+
+<!-- Sorting the new data by year and state FIPS codes (each state has a unique FIPS code). -->
+<!-- The merge command merges datasets, here merging the new dataset loaded with the population-state-public.dta dataset by year and stfips. -->
+<!-- They used tab to create a table of summary statistics of the merged data. -->
 
 sort year stfips;
 merge year stfips using population-state-public.dta;
 tab _merge;
 
+<!-- The data is filtered for years after and including 2008. -->
+
 keep if year>=2008;
+
+<!-- They created a new column using the generate command dividing the total (something) by the population and multiplying by 100,000. -->
 
 *Calculate sales per 100,000;
 gen totalpc = (total/pop)*100000;
 
+<!-- Generated another column titled "sandyhook" with data from December of 2012 or January-April of 2013. -->
+
 gen sandyhook = (year == 2012 & month == 12)|(year==2013 & month<=4);
+
+<!-- Used the tabulate command to generate summary statistics for month. -->
+<!-- Generated a monthdv column using a for loop. -->
+<!-- The for loop uses years 2009-2015 and generates yrdv columns for each of these years. -->
+<!-- I am not sure what these yrdv columns show. -->
 
 tab month, gen(monthdv);
 forvalues y = 2009/2015 {;
   gen yrdv`y' = year == `y';
 };
 
+<!-- Creating another for loop across state codes. -->
+
 foreach x in AK AL AR AZ CA CO CT DE FL GA HI IA ID IL IN KS LA MA MD ME MI MN MO MS MT ND NE NH NJ NM NV NY OH OK OR PA RI SC SD TN TX  VA VT WA WI WV WY {;
+
+<!-- "di" is to display strings and values of scalar expressions. Here it displays the x values. -->
+<!-- They then create a regression of the variables sandyhook, monthdv's, and yrdv's on totalpc if the state name is contained within the x variable (?). -->
 
 *Estimate de-seasonalized and de-trended gun sales;
 *Multiply coefficients from these regressions by 5 to obtain values reported in Figure 3;
@@ -181,8 +215,17 @@ clear;
 * Replication Figure 4 *;
 ************************;
 
+<!-- Reading in a new data set to use. -->
+<!-- Sorting the dataset by state FIPS codes, year, and month. -->
+
 use deaths-age-state-NOTPUBLIC.dta;
 sort stfips year month;
+
+<!-- Sorting again (?) by state FIPS codes, year, and month. -->
+<!-- Doing a "many-to-one merge" on state FIPS code, year, and month using a previously used dataset. -->
+<!-- Getting the summary statistics for the merged data using tab. -->
+<!-- Filtering the data to remove if the merged data does not include "3" - unsure if this is a month variable or representative of something else. -->
+<!-- Then dropping all other merged data so that we are only left with data including 3. -->
 
 sort stfips year month;
 merge m:1 stfips year month using bckcheck-state-public.dta;
@@ -190,24 +233,45 @@ tab _merge;
 drop if _merge ~= 3;
 drop _merge;
 
+<!-- Sorting the data by state FIPS code, year, and age category. -->
+<!-- Merging these columns with another previous dataset. -->
+<!-- Creating a table of summary statistics for this merged data. -->
+<!-- Again dropping all data that does not include 3. -->
+
 sort stfips year agecat;
 merge stfips year agecat using population-state-age-public;
 tab _merge;
 drop if _merge~=3;
+
+<!-- Filtering the data for the 0-14 age category. -->
+<!-- Filtering further for the December to April window. -->
+<!-- Replacing the year to be the following year when the month is December to align it with the first four months of the following year. -->
+<!-- Filtering out years before 2008 and after 2015. -->
+
 
 keep if agecat == "0_14";
 keep if month <= 4 | month == 12;
      replace year = year + 1 if month == 12;
 drop if year < 2008 | year > 2015;
 
+<!-- Dropping certain states with data that has been previously determined to show flawed data. -->
+
 * drop states with clearly flawed gun sales data (DC, KY, NC, and UT);
 drop if stfips == 11 | stfips == 21 | stfips == 37 | stfips == 49;
 
+<!-- Sorting the data again by state FIPS code and year. -->
+
 sort stfips year;
+
+<!-- Creating a column with the mortality rate by dividing the number of deaths by the population of the age category and multiplying by 100,000. -->
 
 gen mortrate = (numdeaths/pop_byage)*100000;
 
+<!-- Uses the collapse command to create a dataset of the means of mortality rate, population by age, and organizing it by state FIPS and year. -->
+
 collapse (mean) mortrate pop_byage, by(stfips year);
+
+<!-- Creating a column for large increases (?) that includes data for the states with the listed codes. -->
 
 gen largeinc = stfips == 33 | stfips == 2 | stfips == 30 | stfips == 46 |	
     stfips == 56 | stfips == 54 | stfips == 40 | stfips == 29 |
@@ -218,19 +282,35 @@ gen largeinc = stfips == 33 | stfips == 2 | stfips == 30 | stfips == 46 |
 	stfips == 39 | stfips == 51 | stfips == 50 | stfips == 35 |
 	stfips == 48 | stfips == 32 | stfips == 45;
 
+<!-- Making a table of summary statistics for the newly created largeinc column. -->
+<!-- Sorting this by state FIPS code and year. -->
+
 tab largeinc;
 sort stfips year;
+
+<!-- Sorting by largeinc and year. -->
+<!-- Use collapse to create a dataset with the means for mortality rate and weighting it by population by age then also organizing it by largeinc and year. -->
 
 sort largeinc year;
 collapse (mean) mortrate [weight=pop_byage], by(largeinc year);
 
+<!-- Creating the same trend and trend2 columns we created previously that use 2007 as a base year 0. -->
+
 gen trend = year - 2007;
 gen trend2 = trend^2;
+
+<!-- Creating multiple regressions. -->
+<!-- First regression is trend and trend2 on mortality rate if the year is not 2013 and largeinc is equal to 1. -->
+<!-- Second regression is trend and trend2 on mortality rate if the year is not 2014 and largeinc is 0. -->
+<!-- Predicting residuals of both regressions. -->
 
 regress mortrate trend trend2 if year ~= 2013 & largeinc == 1;
 predict residbig, residual;
 regress mortrate trend trend2 if year ~= 2013 & largeinc == 0;
 predict residsml, residual;
+
+<!-- Sorting the data by largeinc and year. -->
+<!-- Creating lists of the data for year, mortality rate, residual, and largeinc for either 0 or 1. -->
 
 sort largeinc year;
 list year mortrate residbig largeinc if largeinc == 1, clean;
@@ -240,9 +320,16 @@ clear;
 *********************************************************;
 * Replication Table 1, Panel 1 (Descriptive Statistics) *;
 *********************************************************;
+
+<!-- Reading in another dataset. -->
+<!-- Filtering for 2013 as the year. -->
+<!-- Filtering for cause of death being accidental firearm use. -->
+
 use deaths-age-public.dta;
 keep if year==2013;
 keep if causedeath=="acc_firearms";
+
+<!-- Formatting the population by age category. Unsure what this format shows. -->
 
 format pop_byage %10.0f;
 
@@ -254,22 +341,39 @@ clear;
 *Replicate Table 1, panel 2 *;
 *****************************;
 
+<!-- Reading in dataset. -->
+
 use deaths-age-public.dta;
+
+<!-- Filtering the data for years after and including 2008. -->
 
 keep if year>=2008;
 
+<!-- Creating a sandyhook column the same as done previously. -->
+
 gen sandyhook=(year==2012 & month==12)|(year==2013 & month<=4);
+
+<!-- Summing the number of deaths and population by age by year month age category and the sandyhook variable. -->
 
 collapse (sum) numdeaths pop_byage, by(year month agecat sandyhook);
 
+<!-- Creating the mortatlity rate. -->
+
 gen mortrate=(numdeaths/pop_byage)*100000;
+
+<!-- Making a for loop wihtin the age categories. -->
 
 foreach x in 0_14 15p {;
 di "`x'";
 xi: regress mortrate i.month i.year sandyhook if agecat=="`x'";
 };
 
+<!-- Summing the number of deaths and the population by age by year, month, and the sandyhook variable. -->
+
 collapse (sum) numdeaths pop_byage, by(year month sandyhook);
+
+<!-- Creating a mortality rate variable and summing it. -->
+<!-- Regressing the mortality rate using interaction expansion. -->
 
 gen mortrate=(numdeaths/pop_byage)*100000;
 summ mortrate;
@@ -280,12 +384,18 @@ clear;
 *Replicate Table 1, panel 3 *;
 *****************************;
 
+<!-- Reading in data. -->
+<!-- Filtering by year. -->
+
 use deaths-age-public.dta;
 
 keep if year>=2008;
 
 *Create total population variable that varies by year, but not by age;
 egen pop=sum(pop_byage), by(year month);
+
+<!-- Sorting the data and merging with previous dataset. -->
+<!-- Summarizing statistics of merged data. -->
 
 sort year month;
 merge year month using bckcheck-public.dta;
@@ -300,6 +410,9 @@ gen sandyhook=(year==2012 & month==12)|(year==2013 & month<=4);
 *Calculate mortality rate per 100,000;
 gen mortrate=(numdeaths/pop_byage)*100000;
 
+<!-- Creating a for loop with the age categories. -->
+<!-- Regressing using a two-stage least squares regression with month and year on mortality rate within the specified age cateogry. -->
+
 foreach x in 0_14 15p {;
 di "`x'";
 xi: ivregress 2sls mortrate i.month i.year (totalpc = sandyhook) if agecat=="`x'";
@@ -311,6 +424,8 @@ collapse (sum) numdeaths pop_byage, by(year month totalpc sandyhook);
 *Calculate mortality rate for full population;
 gen mortrate=(numdeaths/pop_byage)*100000;
 
+<!-- Running another two-stage least squares regression with month and year on mortality rate. -->
+
 xi: ivregress 2sls mortrate i.month i.year (totalpc=sandyhook);
 clear;
 
@@ -319,9 +434,16 @@ clear;
 *The data for these regressions are not publicly available *;
 ************************************************************;
 
+<!-- Reading in data and filtering the year. -->
+
 use deaths-age-state-NOTPUBLIC.dta;
 
 keep if year>=2008;
+
+<!-- Sorting and merging the datasets. -->
+<!-- Creating summary statistics table of the merged data. -->
+<!-- Filtering for merge = 3 (?). -->
+<!-- Unsure of the function of caputre drop. -->
 
 sort stfips year agecat;
 merge stfips year agecat using population-state-age-public.dta;
@@ -329,10 +451,14 @@ tab _merge;
 keep if _merge==3; 
 capture drop _merge;
 
+<!-- Following almost the same steps as above. -->
+
 sort stfips year month;
 merge stfips year month using bckcheck-state-public.dta;
 tab _merge;
 keep if _merge==3;
+
+<!-- Removing data from states with data that is "flawed" according to the authors. -->
 
 *Exclude states with clearly flawed gun sales data (DC, KY NC, and UT);
 drop if stfips==11|stfips==21|stfips==37|stfips==49;
@@ -340,6 +466,8 @@ drop if stfips==11|stfips==21|stfips==37|stfips==49;
 *Create sandyhook instruments;
 gen sandyhook=(year==2012 & month==12)|(year==2013 & month<=4);
 gen shook_obama=sandyhook*pctobama;
+
+<!-- Creating a variable for each state in each month. -->
 
 gen stmonth=(stfips*100)+month;
 
@@ -351,6 +479,8 @@ gen totalpc=(total/pop)*100;
 
 *Calculate mortality rate per 100,000;
 gen mortrate=(numdeaths/pop_byage)*100000;
+
+<!-- For loop running a regression. -->
 
 foreach x in 0_14 15p {;
 xi: ivreg2 mortrate i.month i.stname*i.year i.stname*i.month (totalpc = sandyhook shook_obama) if agecat=="`x'" [weight=pop_byage], cluster(stname);
