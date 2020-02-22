@@ -1,0 +1,13 @@
+---
+title: 'Milestone 3: About My Paper'
+author: "Hannah Valencia"
+date: "2/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The paper I will be replicating is titled "Firearms and accidental deaths: Evidence from the aftermath of the Sandy Hook school shooting" by Phillip B. Levine and Robin McKnight, as published in Sceince Magazine by the American Association for the Advancement of Science. This paper looks at the effects of the increased exposure to firearms that took place immediately after the Sandy Hook school shooting in December of 2012. This paper looks at the 5 month period that followed this atrocity, following the trends of background checks, google searches, and accidental firearm deaths. It is noted by the authors that following the Sandy Hook shooting, gun sales increased by 3 million, so seeing how this spike affects these trends is worth noting. The authors also look at trends by state, to see if more deaths by firearms took place in the states where the per-capita gun sales increased.
+
