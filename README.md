@@ -1,4 +1,4 @@
-# 1006-milestone-3
+# Firearms after Sandy Hook
 
 Information related to "Firearms and accidental deaths: Evidence from the aftermath of the Sandy Hook school shooting".
 
